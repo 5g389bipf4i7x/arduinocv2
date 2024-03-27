@@ -7,7 +7,7 @@ import serial
 import math
 
 
-arduino = serial.Serial()
+# arduino = serial.Serial()
 
 cap=cv2.VideoCapture(0)
 hands = mpHands.Hands()
@@ -17,34 +17,28 @@ while True:
     if not ret:
         print("**Failed to read frame from the camera**")
         break
-    detimg = cv2.flip(cv2.resize(detimg,(400,300)), 1) #設定螢幕大小
-    if ret:
+    else:
+        detimg = cv2.flip(cv2.resize(detimg,(400,300)), 1) #設定螢幕大小
         imgRGB = cv2.cvtColor(detimg,cv2.COLOR_BGR2RGB) 
         resule = hands.process(imgRGB)
         if resule.multi_hand_landmarks:
                 for handLms in resule.multi_hand_landmarks:
                     mpDraw.draw_landmarks(detimg,handLms,mpHands.HAND_CONNECTIONS)
                     for i,lm in enumerate(handLms.landmark):
-                        print(i , int(lm.x*detimg.shape[0]) , int(lm.y*detimg.shape[1]))
-                thumb_base = handLms.landmark[mpHands.HandLandmark.THUMB_MCP]
-                thumb_tip = handLms.landmark[mpHands.HandLandmark.THUMB_TIP]
-                thumb_tip_x, thumb_tip_y = int(thumb_tip.x * detimg.shape[1]), int(thumb_tip.y * detimg.shape[0])
-                thumb_base_x,thumb_base_y = int(thumb_base.x *detimg.shape[1]),int(thumb_base.y * detimg.shape[0])
-                indexfinger_tip = handLms.landmark[mpHands.HandLandmark.INDEX_FINGER_TIP]
-                middlefinger_tip = handLms.landmark[mpHands.HandLandmark.MIDDLE_FINGER_TIP]
-                indexfinger_tip_x,indexfinger_tip_y = int(indexfinger_tip.x*detimg.shape[1]),int(indexfinger_tip.y*detimg.shape[0])
-                middlefinger_tip_x,middlefinger_tip_y = int(middlefinger_tip.x*detimg.shape[1]),int(middlefinger_tip.y*detimg.shape[0])
-                def slope(xt,xb,yt,yb):
-                    m = (xt-xb)/(yt-yb)
-                    return int(m)
-                #拇指tip&base的斜率要再設置過
-            
-                if thumb_tip_x - thumb_base_x < 0 and slope(thumb_tip_x,thumb_base_x,thumb_tip_y,thumb_base_y)<(0):
-                         cv2.circle(detimg, (200, 100), 5, (0, 0, 255), -1)
-                else:
-                     None
+                        #print(i , int(lm.x*detimg.shape[0]) , int(lm.y*detimg.shape[1])) #
+                        lm12x = int(handLms.landmark[12].x*detimg.shape[1]) #取得12節點的X座標
+                        lm12y = int(handLms.landmark[12].y*detimg.shape[0]) #...Y座標
+                        cv2.circle ( detimg,(lm12x,lm12y) , 10 , (0,0,255) , cv2.FILLED) #在12上畫圓
+                    
+                length,height,_ = detimg.shape
+                cameracenter= length//2,height//2
 
+                #要分割攝影機畫面成9等分或26等分-放射
                 
+                #抓握
+
+
+
                 
 
     cv2.imshow('img',detimg)
