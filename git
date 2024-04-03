@@ -14,5 +14,30 @@
                 angle = np.arccos((b**2+c**2-a**2)/2*b*c)
                 angle= np.degrees(angle)
 '''
-'''     
+'''     filtered_contours = [cnt for cnt in contours if cv2.contourArea(cnt)> min_area 
+                  and cv2.contourArea(cnt)<max_area] #手部面積尚未被定義
         '''
+
+'''imgray = cv2.cvtColor(detimg,cv2.COLOR_BGR2GRAY) #轉灰度
+        blurred = cv2.GaussianBlur(imgray, (5, 5), 0)  #高斯模糊
+        thresh = cv2.adaptiveThreshold(blurred,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY,11,2) #自適應域質化
+        contours,_ =cv2.findContours(thresh,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE) #尋找輪廓
+        cnt = contours[0] #獲取第一個輪廓
+        hull = cv2.convexHull(cnt) #凸包
+        defects = cv2.convexityDefects(cnt,hull) #凹陷 !hull可能錯誤 待驗證
+        finger = defects.shape[0]+1 #計算手指
+
+        cv2.drawContours(detimg,[cnt],-1,(0,255,0),2)
+        cv2.drawContours(detimg,[hull],-1,(0,0,255),2)
+        cv2.putText(detimg, f'Finger Count: {finger}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+        cv2.imshow('Hand Contour Detection',detimg)'''
+'''for i,lm in enumerate(handLms.landmark):
+                        print(i , int(lm.x*detimg.shape[0]) , int(lm.y*detimg.shape[1]))'''#顯示手關節座標
+
+'''if thumb_tip.x > thumb_base.x:
+print...
+else:
+        cv2.arrowedLine(detimg,(thumb_base_x,thumb_base_y),(thumb_tip_x,thumb_tip_y),(0,255,0),tipLength=0.2)'''#
+
+'''angle_rad = math.atan2(thumb_tip_y - thumb_base_y, thumb_tip_x - thumb_base_x)
+angle_deg = math.degrees(angle_rad)''' #偵測角度

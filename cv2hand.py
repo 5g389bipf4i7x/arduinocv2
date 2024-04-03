@@ -28,14 +28,14 @@ while True:
                         #print(i , int(lm.x*detimg.shape[0]) , int(lm.y*detimg.shape[1])) #
                         lm12x = int(handLms.landmark[12].x*detimg.shape[1]) #取得12節點的X座標
                         lm12y = int(handLms.landmark[12].y*detimg.shape[0]) #...Y座標
-                        cv2.circle ( detimg,(lm12x,lm12y) , 10 , (0,0,255) , cv2.FILLED) #在12上畫圓
+                        cv2.circle ( detimg,(lm12x,lm12y) , 5 , (0,0,255) , cv2.FILLED) #在中指尖上畫圓
                     
-                length,height,_ = detimg.shape
-                cameracenter= length//2,height//2
-
+        Cheight,Clength = detimg.shape[:2]
+        cameracenter= (Clength//2,Cheight//2)
+        #cv2.circle (detimg,(cameracenter),10,(255,0,0),cv2.FILLED)
                 #要分割攝影機畫面成9等分或26等分-放射
                 
-                #抓握
+                #抓握-拇指中指合併
 
 
 
