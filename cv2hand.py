@@ -37,14 +37,16 @@ while True:
                     lm4x = int(handLms.landmark[4].x*detimg.shape[1]) #取得4節點的X座標
                     lm4y = int(handLms.landmark[4].y*detimg.shape[0])
         cv2.circle (detimg,(centerpoint),10,(255,0,0),cv2.FILLED) #中心定一點
-        if lm4x ==  lm12x and lm4y == lm12y:
+
+        if lm4x ==  lm12x and lm4y == lm12y: #再加一層測定 如果未偵測到節點 則不動作
             while True:
                 distancepoint = [abs(lm12x-lm4x),abs(lm12y-lm4y)]
                 distance = math.sqrt(distancepoint[0]**2 + distancepoint[1]**2) #取得拇指與中指之距
                 print(distance)# 會因為靠近鏡頭而讓值變大 暫時無法修正 待量化距離&手臂
 
-                if lm4x ==  lm12x and lm4y == lm12y:
+                if lm4x !=  lm12x and lm4y != lm12y:
                     break
+                
 #拇指與中指併起 食指靠攏 抓握啟動 再靠攏一次 抓握型態結束 當進入抓握狀態時無法移動 或是以pose偵測節點
 
         #底盤旋轉 將畫面分成四等分 取第2第3部分作偵測範圍
