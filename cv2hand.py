@@ -90,7 +90,6 @@ while True:
                     finger_points.append((finger_x,finger_y))
                 
                 angles = hand_angle(finger_points)
-                catch_count = 0
                 if hand_pos(angles) == 'catch':
                     catch_count += 1
                     if catch_count == 1:
