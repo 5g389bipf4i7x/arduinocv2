@@ -56,7 +56,6 @@ def hand_angle(hand_):
     angle_list.append(angle_)
     return angle_list
 
-
 def hand_pos(finger_angle):
     f1 = finger_angle[0]   # 大拇指角度
     f2 = finger_angle[1]   # 食指角度
@@ -64,22 +63,56 @@ def hand_pos(finger_angle):
     f4 = finger_angle[3]   # 無名指角度
     f5 = finger_angle[4]   # 小拇指角度
     # 小於 50 表示手指伸直，大於等於 50 表示手指捲縮    
-    if f1>50 and f2>50  and f3>50 and f4>50 and f5>50:
+    if f1>50 and f2>60  and f3>50 and f4>60 and f5>60:
         return 'catch'
 
+THRESHOLD = 30
+def hand_pos_and_control(finger_points, cx, cy):
+    # 取中指指根 (9) 位置
+    middle_finger_mcp = finger_points[9]
+    dx = middle_finger_mcp[0] - cx
+    dy = middle_finger_mcp[1] - cy
+    
+    if abs(dx) <=THRESHOLD and abs(dy) <=THRESHOLD:
+        command = 'STAY'
+    elif dx > THRESHOLD and abs(dy) <= THRESHOLD:
+        command = 'RIGHT'
+    elif dx < -THRESHOLD and abs(dy) <= THRESHOLD:
+        command = 'LEFT'
+    elif abs(dx) <= THRESHOLD and dy > THRESHOLD:
+        command = 'DOWN'
+    elif abs(dx) <= THRESHOLD and dy < -THRESHOLD:
+        command = 'UP'
+    elif dx > THRESHOLD and dy > THRESHOLD:
+        command = 'RIGHT,DOWN'
+    elif dx > THRESHOLD and dy < -THRESHOLD:
+        command = 'RIGHT,UP'
+    elif dx < -THRESHOLD and dy > THRESHOLD:
+        command = 'LEFT,DOWN'
+    elif dx < -THRESHOLD and dy < -THRESHOLD:
+        command = 'LEFT,UP'
+    else:
+        command = 'STAY'
+
+    return command
+
+
+#轉手
 catch_count = 0
 distance_tm = False
+
 while True:
     ret,detimg=cap.read()
     if not ret:
         print("**Failed to read frame from the camera**")
         break
     else:
-        detimg = cv2.flip(cv2.resize(detimg,(400,300)), 1) #設定螢幕大小
+        detimg = cv2.flip(cv2.resize(detimg,(640,480)), 1) #設定螢幕大小
         imgRGB = cv2.cvtColor(detimg,cv2.COLOR_BGR2RGB)  
         resule = hands.process(imgRGB)
         Cheight,Clength = detimg.shape[:2]
-        centerpoint= (Clength//2,Cheight//2)
+        cx,cy= (Clength//2,Cheight//2)
+        cv2.circle(detimg,(cx, cy), 5, (255, 0, 0), -1)
         if resule.multi_hand_landmarks:
             for handLms in resule.multi_hand_landmarks:
                 mpDraw.draw_landmarks(detimg,handLms,mpHands.HAND_CONNECTIONS)
@@ -100,24 +133,16 @@ while True:
                 if distance_tm:
                     distancepoint = [abs(finger_points[12][0]-finger_points[4][0]),abs(finger_points[12][1]-finger_points[4][1])]#取座標相減絕對值
                     distance = math.sqrt(distancepoint[0]**2 + distancepoint[1]**2) #取得拇指與中指之距
-                    print(distance)# 會因為靠近鏡頭而讓值變大 暫時無法修正 待量化距離&手臂
-#!!記數出現問題，未能脫離迴圈
-            cv2.circle (detimg,(centerpoint),10,(255,0,0),cv2.FILLED) #中心定一點
-            
-#拇指與中指併起 食指靠攏 抓握啟動 再靠攏一次 抓握型態結束 當進入抓握狀態時無法移動 或是以pose偵測節點
-
-        #底盤旋轉 將畫面分成四等分 取第2第3部分作偵測範圍
-
-        #y軸與pose判斷手臂抬升下降 手腕掌跟-小臂 手軸掌跟-大臂        
-        
-
-
-
-                
+                    print(distance)
+                if distance_tm == False:
+                    command = hand_pos_and_control(finger_points, cx, cy)
+                    print(command)         
 
     cv2.imshow('img',detimg)
     key=cv2.waitKey(2)
     if key ==27:
         break
+
+
 cap.release
 cv2.destroyAllWindows
