@@ -95,7 +95,9 @@ def hand_pos_and_control(finger_points, cx, cy):
         command = 'STAY'
 
     return command
-    
+
+
+#轉手
 catch_count = 0
 distance_tm = False
 
