@@ -3,13 +3,16 @@ import numpy as np
 import mediapipe as mp
 import mediapipe.python.solutions.hands as mpHands
 import mediapipe.python.solutions.drawing_utils as mpDraw
-import serial
 import math
 import sys
+import pyfirmata2
 
 cap=cv2.VideoCapture(0)
 hands = mpHands.Hands()
-#arduino = serial.Serial()
+
+board = pyfirmata2.Arduino()
+servo = board.get_pin()
+
 
 def vector_2d_angle(v1, v2):
     v1_x = v1[0]
@@ -136,8 +139,12 @@ while True:
                     print(distance)
                 if distance_tm == False:
                     command = hand_pos_and_control(finger_points, cx, cy)
-                    print(command)         
+                    print(command)
+                clip_distance = round(np.interp(distance,[],[0,100]))
+                servo_cdt = (100-clip_distance)
+                servo.write(servo_cdt)
 
+                
     cv2.imshow('img',detimg)
     key=cv2.waitKey(2)
     if key ==27:
