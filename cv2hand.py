@@ -10,8 +10,8 @@ import pyfirmata2
 cap=cv2.VideoCapture(0)
 hands = mpHands.Hands()
 
-board = pyfirmata2.Arduino()
-servo = board.get_pin()
+board = pyfirmata2.Arduino('COM3')
+servo = board.get_pin() #確認腳位
 
 
 def vector_2d_angle(v1, v2):
@@ -140,7 +140,7 @@ while True:
                 if distance_tm == False:
                     command = hand_pos_and_control(finger_points, cx, cy)
                     print(command)
-                clip_distance = round(np.interp(distance,[],[0,100]))
+                clip_distance = round(np.interp(distance,[],[0,100])) #塞入測試最大值與最小值
                 servo_cdt = (100-clip_distance)
                 servo.write(servo_cdt)
 
