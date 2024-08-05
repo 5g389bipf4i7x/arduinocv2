@@ -4,15 +4,15 @@ import mediapipe as mp
 import mediapipe.python.solutions.hands as mpHands
 import mediapipe.python.solutions.drawing_utils as mpDraw
 import math
-import sys
 import pyfirmata2
+import time
 
+board = pyfirmata2.Arduino('COM5')
+servo = board.get_pin('d:4:s')
+time.sleep(2)
 cap=cv2.VideoCapture(0)
-hands = mpHands.Hands()
-
-board = pyfirmata2.Arduino('COM3')
-servo = board.get_pin() #確認腳位
-
+hands = mpHands.Hands(static_image_mode=False, max_num_hands=2, min_detection_confidence=0.5)cap=cv2.VideoCapture(0)
+ 
 
 def vector_2d_angle(v1, v2):
     v1_x = v1[0]
@@ -137,12 +137,14 @@ while True:
                     distancepoint = [abs(finger_points[12][0]-finger_points[4][0]),abs(finger_points[12][1]-finger_points[4][1])]#取座標相減絕對值
                     distance = math.sqrt(distancepoint[0]**2 + distancepoint[1]**2) #取得拇指與中指之距
                     print(distance)
+                    Pos = np.interp(distance,[0,220],[0,145])
+                    Posgripper = (round(Pos))
+                    Servopos = (145-Posgripper)
+                    servo.write(Servopos)
+                    time.sleep(0.01)
                 if distance_tm == False:
                     command = hand_pos_and_control(finger_points, cx, cy)
                     print(command)
-                clip_distance = round(np.interp(distance,[],[0,100])) #塞入測試最大值與最小值
-                servo_cdt = (100-clip_distance)
-                servo.write(servo_cdt)
 
                 
     cv2.imshow('img',detimg)
