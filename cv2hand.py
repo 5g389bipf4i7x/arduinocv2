@@ -11,8 +11,7 @@ board = pyfirmata2.Arduino('COM5')
 servo = board.get_pin('d:4:s')
 time.sleep(2)
 cap=cv2.VideoCapture(0)
-hands = mpHands.Hands(static_image_mode=False, max_num_hands=2, min_detection_confidence=0.5)cap=cv2.VideoCapture(0)
- 
+hands = mpHands.Hands(static_image_mode=False, max_num_hands=2, min_detection_confidence=0.5)
 
 def vector_2d_angle(v1, v2):
     v1_x = v1[0]
