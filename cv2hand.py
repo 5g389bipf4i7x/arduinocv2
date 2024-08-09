@@ -10,7 +10,6 @@ import time
 board = pyfirmata2.Arduino('COM5')
 servo_claw = board.get_pin('d:4:s') #爪子
 servo_base = board.get_pin('d:1:s') #底座
-servo_fb = board.get_pin('d:2:s') #前後
 servo_ud = board.get_pin('d:3:s') #上下
 time.sleep(2)
 cap=cv2.VideoCapture(0)
@@ -25,7 +24,6 @@ ud_angle = 100
 
 servo_base.write(base_angle)
 servo_claw.write(0)
-servo_fb.write(90)
 servo_ud.write(ud_angle)
 
 #取得角度
