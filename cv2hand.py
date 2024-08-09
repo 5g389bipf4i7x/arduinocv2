@@ -1,6 +1,5 @@
 import cv2
 import numpy as np
-import mediapipe as mp
 import mediapipe.python.solutions.hands as mpHands
 import mediapipe.python.solutions.drawing_utils as mpDraw
 import math
@@ -8,10 +7,24 @@ import pyfirmata2
 import time
 
 board = pyfirmata2.Arduino('COM5')
-servo = board.get_pin('d:4:s')
+servo_claw = board.get_pin('d:4:s') #爪子
+servo_base = board.get_pin('d:1:s') #底座
+servo_fb = board.get_pin('d:2:s') #前後
+servo_ud = board.get_pin('d:3:s') #上下
 time.sleep(2)
 cap=cv2.VideoCapture(0)
 hands = mpHands.Hands(static_image_mode=False, max_num_hands=2, min_detection_confidence=0.5)
+ 
+THRESHOLD = 30
+catch_count = 0
+distance_tm = False
+base_angle = 90
+ud_angle = 100
+
+servo_base.write(base_angle)
+servo_claw.write(0)
+servo_fb.write(90)
+servo_ud.write(ud_angle)
 
 def vector_2d_angle(v1, v2):
     v1_x = v1[0]
@@ -68,7 +81,7 @@ def hand_pos(finger_angle):
     if f1>50 and f2>60  and f3>50 and f4>60 and f5>60:
         return 'catch'
 
-THRESHOLD = 30
+
 def hand_pos_and_control(finger_points, cx, cy):
     # 取中指指根 (9) 位置
     middle_finger_mcp = finger_points[9]
@@ -100,8 +113,7 @@ def hand_pos_and_control(finger_points, cx, cy):
 
 
 #轉手
-catch_count = 0
-distance_tm = False
+
 
 while True:
     ret,detimg=cap.read()
@@ -139,11 +151,25 @@ while True:
                     Pos = np.interp(distance,[0,220],[0,145])
                     Posgripper = (round(Pos))
                     Servopos = (145-Posgripper)
-                    servo.write(Servopos)
+                    servo_claw.write(Servopos)
                     time.sleep(0.01)
                 if distance_tm == False:
                     command = hand_pos_and_control(finger_points, cx, cy)
                     print(command)
+                    if command == 'LEFT':
+                        base_angle = max(0,base_angle-1)
+                        time.sleep(0.01)
+                    elif command == 'RIGHT':
+                        base_angle = min(180,base_angle-1)
+                        time.sleep(0.01)
+                    elif command == 'UP':
+                        ud_angle = min(135,ud_angle+1)
+                        time.sleep(0.01)
+                    elif command == 'DOWN':
+                        ud_angle = max(100,ud_angle-1)
+                        time.sleep(0.01)
+
+
 
                 
     cv2.imshow('img',detimg)
