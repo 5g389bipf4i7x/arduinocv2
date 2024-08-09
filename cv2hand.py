@@ -6,6 +6,7 @@ import math
 import pyfirmata2
 import time
 
+#初始化
 board = pyfirmata2.Arduino('COM5')
 servo_claw = board.get_pin('d:4:s') #爪子
 servo_base = board.get_pin('d:1:s') #底座
@@ -14,7 +15,8 @@ servo_ud = board.get_pin('d:3:s') #上下
 time.sleep(2)
 cap=cv2.VideoCapture(0)
 hands = mpHands.Hands(static_image_mode=False, max_num_hands=2, min_detection_confidence=0.5)
- 
+
+#設定變數
 THRESHOLD = 30
 catch_count = 0
 distance_tm = False
@@ -26,6 +28,7 @@ servo_claw.write(0)
 servo_fb.write(90)
 servo_ud.write(ud_angle)
 
+#取得角度
 def vector_2d_angle(v1, v2):
     v1_x = v1[0]
     v1_y = v1[1]
@@ -37,6 +40,7 @@ def vector_2d_angle(v1, v2):
         angle_ = 180
     return angle_
 
+#偵測手部關節角度
 def hand_angle(hand_):
     angle_list = []
     # thumb 大拇指角度
@@ -71,6 +75,7 @@ def hand_angle(hand_):
     angle_list.append(angle_)
     return angle_list
 
+#偵測手指姿勢
 def hand_pos(finger_angle):
     f1 = finger_angle[0]   # 大拇指角度
     f2 = finger_angle[1]   # 食指角度
@@ -81,7 +86,7 @@ def hand_pos(finger_angle):
     if f1>50 and f2>60  and f3>50 and f4>60 and f5>60:
         return 'catch'
 
-
+#以中指指根為基點偵測手部移動
 def hand_pos_and_control(finger_points, cx, cy):
     # 取中指指根 (9) 位置
     middle_finger_mcp = finger_points[9]
@@ -110,9 +115,6 @@ def hand_pos_and_control(finger_points, cx, cy):
         command = 'STAY'
 
     return command
-
-
-#轉手
 
 
 while True:
@@ -144,7 +146,7 @@ while True:
                     elif catch_count == 2:
                         distance_tm = False
                         catch_count = 0
-                if distance_tm:
+                if distance_tm: #進入抓握模式
                     distancepoint = [abs(finger_points[12][0]-finger_points[4][0]),abs(finger_points[12][1]-finger_points[4][1])]#取座標相減絕對值
                     distance = math.sqrt(distancepoint[0]**2 + distancepoint[1]**2) #取得拇指與中指之距
                     print(distance)
@@ -153,7 +155,7 @@ while True:
                     Servopos = (145-Posgripper)
                     servo_claw.write(Servopos)
                     time.sleep(0.01)
-                if distance_tm == False:
+                if distance_tm == False: #進入手臂控制模式
                     command = hand_pos_and_control(finger_points, cx, cy)
                     print(command)
                     if command == 'LEFT':
