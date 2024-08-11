@@ -6,27 +6,23 @@ import math
 import pyfirmata2
 import time
 
-#初始化
 board = pyfirmata2.Arduino('COM5')
-servo_claw = board.get_pin('d:4:s') #爪子
-servo_base = board.get_pin('d:1:s') #底座
-servo_ud = board.get_pin('d:3:s') #上下
+servo_claw = board.get_pin('d:6:s') #爪子
+servo_base = board.get_pin('d:11:s') #底座
+servo_fb = board.get_pin('d:9:s') #前後
+servo_ud = board.get_pin('d:10:s') #上下
 time.sleep(2)
 cap=cv2.VideoCapture(0)
 hands = mpHands.Hands(static_image_mode=False, max_num_hands=2, min_detection_confidence=0.5)
-
-#設定變數
+ 
 THRESHOLD = 30
 catch_count = 0
 distance_tm = False
 base_angle = 90
-ud_angle = 100
+ud_angle = 80
 
-servo_base.write(base_angle)
-servo_claw.write(0)
-servo_ud.write(ud_angle)
 
-#取得角度
+
 def vector_2d_angle(v1, v2):
     v1_x = v1[0]
     v1_y = v1[1]
@@ -38,7 +34,6 @@ def vector_2d_angle(v1, v2):
         angle_ = 180
     return angle_
 
-#偵測手部關節角度
 def hand_angle(hand_):
     angle_list = []
     # thumb 大拇指角度
@@ -73,7 +68,6 @@ def hand_angle(hand_):
     angle_list.append(angle_)
     return angle_list
 
-#偵測手指姿勢
 def hand_pos(finger_angle):
     f1 = finger_angle[0]   # 大拇指角度
     f2 = finger_angle[1]   # 食指角度
@@ -84,7 +78,7 @@ def hand_pos(finger_angle):
     if f1>50 and f2>60  and f3>50 and f4>60 and f5>60:
         return 'catch'
 
-#以中指指根為基點偵測手部移動
+
 def hand_pos_and_control(finger_points, cx, cy):
     # 取中指指根 (9) 位置
     middle_finger_mcp = finger_points[9]
@@ -115,6 +109,11 @@ def hand_pos_and_control(finger_points, cx, cy):
     return command
 
 
+#轉手
+servo_claw.write(0)
+servo_base.write(0)
+servo_fb.write(90)
+servo_ud.write(80)
 while True:
     ret,detimg=cap.read()
     if not ret:
@@ -127,6 +126,7 @@ while True:
         Cheight,Clength = detimg.shape[:2]
         cx,cy= (Clength//2,Cheight//2)
         cv2.circle(detimg,(cx, cy), 5, (255, 0, 0), -1)
+
         if resule.multi_hand_landmarks:
             for handLms in resule.multi_hand_landmarks:
                 mpDraw.draw_landmarks(detimg,handLms,mpHands.HAND_CONNECTIONS)
@@ -144,7 +144,7 @@ while True:
                     elif catch_count == 2:
                         distance_tm = False
                         catch_count = 0
-                if distance_tm: #進入抓握模式
+                if distance_tm:
                     distancepoint = [abs(finger_points[12][0]-finger_points[4][0]),abs(finger_points[12][1]-finger_points[4][1])]#取座標相減絕對值
                     distance = math.sqrt(distancepoint[0]**2 + distancepoint[1]**2) #取得拇指與中指之距
                     print(distance)
@@ -152,23 +152,28 @@ while True:
                     Posgripper = (round(Pos))
                     Servopos = (145-Posgripper)
                     servo_claw.write(Servopos)
-                    time.sleep(0.01)
-                if distance_tm == False: #進入手臂控制模式
+                    time.sleep(0.1)
+                if distance_tm == False:
                     command = hand_pos_and_control(finger_points, cx, cy)
                     print(command)
-                    if command == 'LEFT':
-                        base_angle = max(0,base_angle-1)
-                        time.sleep(0.01)
-                    elif command == 'RIGHT':
-                        base_angle = min(180,base_angle-1)
-                        time.sleep(0.01)
-                    elif command == 'UP':
-                        ud_angle = min(135,ud_angle+1)
-                        time.sleep(0.01)
-                    elif command == 'DOWN':
-                        ud_angle = max(100,ud_angle-1)
-                        time.sleep(0.01)
-
+                    if command == 'LEFT' and base_angle>0:
+                        base_angle -= 1
+                        servo_base.write(base_angle)
+                        time.sleep(0.1)
+                    if command == 'RIGHT' and base_angle<180:
+                        base_angle += 1
+                        servo_base.write(base_angle)
+                        time.sleep(0.1)
+                    elif command == 'DOWN' and ud_angle>30:
+                        ud_angle -= 1
+                        print(ud_angle)
+                        servo_ud.write(ud_angle)
+                        time.sleep(0.1)
+                    elif command == 'UP' and ud_angle<100:
+                        ud_angle += 1
+                        print(ud_angle)
+                        servo_ud.write(ud_angle)
+                        time.sleep(0.1)
 
 
                 
@@ -178,5 +183,5 @@ while True:
         break
 
 
-cap.release
-cv2.destroyAllWindows
+cap.release()
+cv2.destroyAllWindows()
