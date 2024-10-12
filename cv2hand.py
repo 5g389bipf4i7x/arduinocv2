@@ -1,187 +1,143 @@
 import cv2
 import numpy as np
 import mediapipe.python.solutions.hands as mpHands
-import mediapipe.python.solutions.drawing_utils as mpDraw
 import math
 import pyfirmata2
 import time
 
-board = pyfirmata2.Arduino('COM5')
-servo_claw = board.get_pin('d:6:s') #爪子
-servo_base = board.get_pin('d:11:s') #底座
-servo_fb = board.get_pin('d:9:s') #前後
-servo_ud = board.get_pin('d:10:s') #上下
-time.sleep(2)
-cap=cv2.VideoCapture(0)
+board = pyfirmata2.Arduino('COM3') #初始化uno板及伺服馬達
+time.sleep(1)
+servos = {
+    'claw' : board.get_pin('d:6:s'),
+    'base' : board.get_pin('d:11:s'),
+    'right' : board.get_pin('d:9:s'),
+    'left' : board.get_pin('d:10:s')
+}
+time.sleep(1)
+
+cap=cv2.VideoCapture(0) #初始化鏡頭
 hands = mpHands.Hands(static_image_mode=False, max_num_hands=2, min_detection_confidence=0.5)
- 
-THRESHOLD = 30
-catch_count = 0
-distance_tm = False
-base_angle = 90
-ud_angle = 80
+
+pos_base = 90
+pos_left = 90
+pos_right = 90
 
 
-
-def vector_2d_angle(v1, v2):
-    v1_x = v1[0]
-    v1_y = v1[1]
-    v2_x = v2[0]
-    v2_y = v2[1]
-    try:
-        angle_= math.degrees(math.acos((v1_x*v2_x+v1_y*v2_y)/(((v1_x**2+v1_y**2)**0.5)*((v2_x**2+v2_y**2)**0.5))))
-    except:
-        angle_ = 180
-    return angle_
-
-def hand_angle(hand_):
-    angle_list = []
-    # thumb 大拇指角度
-    angle_ = vector_2d_angle(
-        ((int(hand_[0][0])- int(hand_[2][0])),(int(hand_[0][1])-int(hand_[2][1]))),
-        ((int(hand_[3][0])- int(hand_[4][0])),(int(hand_[3][1])- int(hand_[4][1])))
-        )
-    angle_list.append(angle_)
-    # index 食指角度
-    angle_ = vector_2d_angle(
-        ((int(hand_[0][0])-int(hand_[6][0])),(int(hand_[0][1])- int(hand_[6][1]))),
-        ((int(hand_[7][0])- int(hand_[8][0])),(int(hand_[7][1])- int(hand_[8][1])))
-        )
-    angle_list.append(angle_)
-    # middle 中指角度
-    angle_ = vector_2d_angle(
-        ((int(hand_[0][0])- int(hand_[10][0])),(int(hand_[0][1])- int(hand_[10][1]))),
-        ((int(hand_[11][0])- int(hand_[12][0])),(int(hand_[11][1])- int(hand_[12][1])))
-        )
-    angle_list.append(angle_)
-    # ring 無名指角度
-    angle_ = vector_2d_angle(
-        ((int(hand_[0][0])- int(hand_[14][0])),(int(hand_[0][1])- int(hand_[14][1]))),
-        ((int(hand_[15][0])- int(hand_[16][0])),(int(hand_[15][1])- int(hand_[16][1])))
-        )
-    angle_list.append(angle_)
-    # pink 小拇指角度
-    angle_ = vector_2d_angle(
-        ((int(hand_[0][0])- int(hand_[18][0])),(int(hand_[0][1])- int(hand_[18][1]))),
-        ((int(hand_[19][0])- int(hand_[20][0])),(int(hand_[19][1])- int(hand_[20][1])))
-        )
-    angle_list.append(angle_)
-    return angle_list
-
-def hand_pos(finger_angle):
-    f1 = finger_angle[0]   # 大拇指角度
-    f2 = finger_angle[1]   # 食指角度
-    f3 = finger_angle[2]   # 中指角度
-    f4 = finger_angle[3]   # 無名指角度
-    f5 = finger_angle[4]   # 小拇指角度
-    # 小於 50 表示手指伸直，大於等於 50 表示手指捲縮    
-    if f1>50 and f2>60  and f3>50 and f4>60 and f5>60:
-        return 'catch'
-
-
-def hand_pos_and_control(finger_points, cx, cy):
-    # 取中指指根 (9) 位置
-    middle_finger_mcp = finger_points[9]
-    dx = middle_finger_mcp[0] - cx
-    dy = middle_finger_mcp[1] - cy
-    
-    if abs(dx) <=THRESHOLD and abs(dy) <=THRESHOLD:
-        command = 'STAY'
-    elif dx > THRESHOLD and abs(dy) <= THRESHOLD:
-        command = 'RIGHT'
-    elif dx < -THRESHOLD and abs(dy) <= THRESHOLD:
-        command = 'LEFT'
-    elif abs(dx) <= THRESHOLD and dy > THRESHOLD:
-        command = 'DOWN'
-    elif abs(dx) <= THRESHOLD and dy < -THRESHOLD:
-        command = 'UP'
-    elif dx > THRESHOLD and dy > THRESHOLD:
-        command = 'RIGHT,DOWN'
-    elif dx > THRESHOLD and dy < -THRESHOLD:
-        command = 'RIGHT,UP'
-    elif dx < -THRESHOLD and dy > THRESHOLD:
-        command = 'LEFT,DOWN'
-    elif dx < -THRESHOLD and dy < -THRESHOLD:
-        command = 'LEFT,UP'
+def command(leftmiddle_x,leftmiddle_y,leftmiddle_z): #手勢控制(上下左右前後)
+    if (9*leftmiddle_x-11*leftmiddle_y>0) and (11*leftmiddle_x+9*leftmiddle_y<8080) and leftmiddle_y<250:
+        common = 'UP'
+    elif (9*leftmiddle_x-11*leftmiddle_y<0) and (11*leftmiddle_x+9*leftmiddle_y>8080) and leftmiddle_y>470:
+        common = 'DOWN'
+    elif (9*leftmiddle_x-11*leftmiddle_y<0) and (11*leftmiddle_x+9*leftmiddle_y<8080) and leftmiddle_x<330:
+        common = 'LEFT'
+    elif (9*leftmiddle_x-11*leftmiddle_y>0) and (11*leftmiddle_x+9*leftmiddle_y>8080) and 500 <leftmiddle_x <880:
+        common = 'RIGHT'
+    elif 330 <=leftmiddle_x <=550 and 250 <= leftmiddle_y <=470 and leftmiddle_z<-0.08:
+        common = 'FRONT'
+    elif 330 <=leftmiddle_x <=550 and 250 <= leftmiddle_y <=470 and leftmiddle_z>-0.03:
+        common = 'BACK'
     else:
-        command = 'STAY'
+        common = 'STAY'
+    return common
 
-    return command
+def draw_arrowedLIne(detimg,arrowed): #螢幕圖像
+    for start,end in arrowed:
+        cv2.arrowedLine(detimg,start,end,(225,225,225),2)
+
+def draw_Line(detimg,line): #螢幕圖像
+    for start,end in line:
+        cv2.line(detimg,start,end,(225,225,225))
 
 
-#轉手
-servo_claw.write(0)
-servo_base.write(0)
-servo_fb.write(90)
-servo_ud.write(80)
+servos['base'].write(90) #馬達初始定位
+servos['left'].write(70)
+servos['right'].write(90)
+
 while True:
     ret,detimg=cap.read()
     if not ret:
         print("**Failed to read frame from the camera**")
         break
     else:
-        detimg = cv2.flip(cv2.resize(detimg,(640,480)), 1) #設定螢幕大小
-        imgRGB = cv2.cvtColor(detimg,cv2.COLOR_BGR2RGB)  
-        resule = hands.process(imgRGB)
-        Cheight,Clength = detimg.shape[:2]
-        cx,cy= (Clength//2,Cheight//2)
-        cv2.circle(detimg,(cx, cy), 5, (255, 0, 0), -1)
+        detimg = cv2.flip(cv2.resize(detimg,(1280,720)), 1) #設定螢幕大小
+        imgRGB = cv2.cvtColor(detimg,cv2.COLOR_BGR2RGB)  #轉換影像顏色格式
+        results = hands.process(imgRGB)
+        cv2.line(detimg,(880,0),(880,720),(255,255,255),2)
+        cv2.circle(detimg,(440,360), 5, (255,225,225),-1)
+        arrowedline = [
+            ((440,250),(440,180)),
+            ((440,470),(440,540)),
+            ((330,360),(260,360)),
+            ((550,360),(620,360))
+        ]
+        draw_arrowedLIne(detimg,arrowedline) 
+        area = [
+            ((330,470),(350,470)),
+            ((330,470),(330,450)),
+            ((550,470),(530,470)),
+            ((550,470),(550,450)),
+            ((330,250),(350,250)),
+            ((330,250),(330,270)),
+            ((550,250),(530,250)),
+            ((550,250),(550,270))
+        ]
+        draw_Line(detimg,area)
+        if results.multi_hand_landmarks:
+            for handLms,handedness in zip(results.multi_hand_landmarks, results.multi_handedness):                    
+                hand_type = handedness.classification[0].label #辨識左右手
+                if hand_type == 'Right':
+                    right_thumb = handLms.landmark[mpHands.HandLandmark.THUMB_TIP]
+                    right_middle = handLms.landmark[mpHands.HandLandmark.MIDDLE_FINGER_TIP]
+                    right_thumb_x = right_thumb.x*detimg.shape[1]
+                    right_thumb_y = right_thumb.y*detimg.shape[0]
+                    right_middle_x = right_middle.x*detimg.shape[1]
+                    right_middle_y = right_middle.y*detimg.shape[0]
+                    distance = round(math.sqrt((right_middle_x - right_thumb_x)**2 + (right_middle_y - right_thumb_y)**2)) #運算兩指間距
+                    distance = np.clip(distance, 0, 220) #將距離映射於0-220之間
+                    pos_claw=(145-np.interp(distance,[0,220],[0,145])) 
+                    servos['claw'].write(pos_claw) #驅動爪子伺服馬達
+                    time.sleep(0.2)
+                if hand_type == 'Left':
+                    left_middle = handLms.landmark[mpHands.HandLandmark.MIDDLE_FINGER_TIP]
+                    left_middle_x = left_middle.x*detimg.shape[1]
+                    left_middle_y = left_middle.y*detimg.shape[0]
+                    signal = command(int(left_middle_x),int(left_middle_y),float(left_middle.z)) 
+                    print(signal)
+                    if signal == 'LEFT' and pos_base >0:
+                        pos_base -= 1
+                    elif signal == 'RIGHT' and pos_base <180:
+                        pos_base += 1
+                    elif signal == 'DOWN' and pos_left>0:
+                        pos_left -= 1
+                    elif signal == 'UP' and pos_left<90: 
+                        pos_left += 1
+                    elif signal == 'FRONT' and pos_right<170:
+                        pos_right += 1
+                    elif signal == 'BACK' and pos_right>90:
+                        pos_right -= 1
+                    elif signal == 'STAY':
+                        pass
 
-        if resule.multi_hand_landmarks:
-            for handLms in resule.multi_hand_landmarks:
-                mpDraw.draw_landmarks(detimg,handLms,mpHands.HAND_CONNECTIONS)
-                finger_points=[]
-                for lm in handLms.landmark: #取得座標
-                    finger_x = lm.x*detimg.shape[1]
-                    finger_y = lm.y*detimg.shape[0]
-                    finger_points.append((finger_x,finger_y))
-                
-                angles = hand_angle(finger_points)
-                if hand_pos(angles) == 'catch':
-                    catch_count += 1
-                    if catch_count == 1:
-                        distance_tm = True
-                    elif catch_count == 2:
-                        distance_tm = False
-                        catch_count = 0
-                if distance_tm:
-                    distancepoint = [abs(finger_points[12][0]-finger_points[4][0]),abs(finger_points[12][1]-finger_points[4][1])]#取座標相減絕對值
-                    distance = math.sqrt(distancepoint[0]**2 + distancepoint[1]**2) #取得拇指與中指之距
-                    print(distance)
-                    Pos = np.interp(distance,[0,220],[0,145])
-                    Posgripper = (round(Pos))
-                    Servopos = (145-Posgripper)
-                    servo_claw.write(Servopos)
-                    time.sleep(0.1)
-                if distance_tm == False:
-                    command = hand_pos_and_control(finger_points, cx, cy)
-                    print(command)
-                    if command == 'LEFT' and base_angle>0:
-                        base_angle -= 1
-                        servo_base.write(base_angle)
+                    if signal == 'LEFT' or signal == 'RIGHT':
+                        servos['base'].write(pos_base)
                         time.sleep(0.1)
-                    if command == 'RIGHT' and base_angle<180:
-                        base_angle += 1
-                        servo_base.write(base_angle)
+                    elif signal == 'UP' or signal == 'DOWN':
+                        servos['left'].write(pos_left)
                         time.sleep(0.1)
-                    elif command == 'DOWN' and ud_angle>30:
-                        ud_angle -= 1
-                        print(ud_angle)
-                        servo_ud.write(ud_angle)
+                    elif signal == 'FRONT' or signal == 'BACK':
+                        servos['right'].write(pos_right)
                         time.sleep(0.1)
-                    elif command == 'UP' and ud_angle<100:
-                        ud_angle += 1
-                        print(ud_angle)
-                        servo_ud.write(ud_angle)
-                        time.sleep(0.1)
+                    elif signal == 'STAY':
+                        pass
 
-
-                
     cv2.imshow('img',detimg)
-    key=cv2.waitKey(2)
-    if key ==27:
+    if cv2.waitKey(5) ==27: #按下Esc鍵即退出
         break
 
+
+cap.release
+cv2.destroyAllWindows
+board.exit()
 
 cap.release()
 cv2.destroyAllWindows()
