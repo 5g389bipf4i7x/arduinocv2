@@ -14,14 +14,9 @@ servos = {
     'left' : board.get_pin('d:10:s')
 }
 time.sleep(1)
-
-cap=cv2.VideoCapture(0) #初始化鏡頭
-hands = mpHands.Hands(static_image_mode=False, max_num_hands=2, min_detection_confidence=0.5)
-
-pos_base = 90
-pos_left = 90
-pos_right = 90
-
+servos['base'].write(90) #馬達初始定位
+servos['left'].write(70)
+servos['right'].write(90)
 
 def command(leftmiddle_x,leftmiddle_y,leftmiddle_z): #手勢控制(上下左右前後)
     if (9*leftmiddle_x-11*leftmiddle_y>0) and (11*leftmiddle_x+9*leftmiddle_y<8080) and leftmiddle_y<250:
@@ -40,18 +35,23 @@ def command(leftmiddle_x,leftmiddle_y,leftmiddle_z): #手勢控制(上下左右�
         common = 'STAY'
     return common
 
-def draw_arrowedLIne(detimg,arrowed): #螢幕圖像
+#繪製直線
+def draw_arrowedLIne(detimg,arrowed): 
     for start,end in arrowed:
-        cv2.arrowedLine(detimg,start,end,(225,225,225),2)
+        cv2.arrowedLine
+        (detimg,start,end,(225,225,225),2)
 
-def draw_Line(detimg,line): #螢幕圖像
+def draw_Line(detimg,line):
     for start,end in line:
-        cv2.line(detimg,start,end,(225,225,225))
+        cv2.line
+        (detimg,start,end,(225,225,225))
 
+pos_base = 90
+pos_left = 90
+pos_right = 90
 
-servos['base'].write(90) #馬達初始定位
-servos['left'].write(70)
-servos['right'].write(90)
+cap=cv2.VideoCapture(0) #初始化鏡頭
+hands = mpHands.Hands(static_image_mode=False, max_num_hands=2, min_detection_confidence=0.5)
 
 while True:
     ret,detimg=cap.read()
@@ -138,6 +138,3 @@ while True:
 cap.release
 cv2.destroyAllWindows
 board.exit()
-
-cap.release()
-cv2.destroyAllWindows()
